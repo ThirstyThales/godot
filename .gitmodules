@@ -1,0 +1,3 @@
+[submodule "modules/GodotMod"]
+	path = modules/GodotMod
+	url = git@github.com:ThirstyThales/GodotMod.git
