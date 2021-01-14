@@ -5,8 +5,8 @@
 /*                           GODOT ENGINE                                */
 /*                      https://godotengine.org                          */
 /*************************************************************************/
-/* Copyright (c) 2007-2020 Juan Linietsky, Ariel Manzur.                 */
-/* Copyright (c) 2014-2020 Godot Engine contributors (cf. AUTHORS.md).   */
+/* Copyright (c) 2007-2021 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2021 Godot Engine contributors (cf. AUTHORS.md).   */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -30,12 +30,13 @@
 
 #include "gd_mono_method.h"
 
+#include <mono/metadata/attrdefs.h>
+#include <mono/metadata/debug-helpers.h>
+
 #include "gd_mono_cache.h"
 #include "gd_mono_class.h"
 #include "gd_mono_marshal.h"
 #include "gd_mono_utils.h"
-
-#include <mono/metadata/attrdefs.h>
 
 void GDMonoMethod::_update_signature() {
 	// Apparently MonoMethodSignature needs not to be freed.

@@ -5,8 +5,8 @@
 /*                           GODOT ENGINE                                */
 /*                      https://godotengine.org                          */
 /*************************************************************************/
-/* Copyright (c) 2007-2020 Juan Linietsky, Ariel Manzur.                 */
-/* Copyright (c) 2014-2020 Godot Engine contributors (cf. AUTHORS.md).   */
+/* Copyright (c) 2007-2021 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2021 Godot Engine contributors (cf. AUTHORS.md).   */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -754,14 +754,17 @@ public:
 
 		for (Map<int, List<float> >::Element *E = key_ofs_map.front(); E; E = E->next()) {
 
+			int key = 0;
 			for (List<float>::Element *F = E->value().front(); F; F = F->next()) {
 
 				float key_ofs = F->get();
-				if (from != key_ofs)
+				if (from != key_ofs) {
+					key++;
 					continue;
+				}
 
 				int track = E->key();
-				key_ofs_map[track][key_ofs] = to;
+				key_ofs_map[track][key] = to;
 
 				if (setting)
 					return;
@@ -1402,7 +1405,7 @@ void AnimationTimelineEdit::_zoom_changed(double) {
 
 float AnimationTimelineEdit::get_zoom_scale() const {
 
-	float zv = zoom->get_value();
+	float zv = zoom->get_max() - zoom->get_value();
 	if (zv < 1) {
 		zv = 1.0 - zv;
 		return Math::pow(1.0f + zv, 8.0f) * 100;
@@ -5068,14 +5071,12 @@ void AnimationTrackEditor::_scroll_input(const Ref<InputEvent> &p_event) {
 
 	Ref<InputEventMouseButton> mb = p_event;
 
-	if (mb.is_valid() && mb->is_pressed() && mb->get_command() && mb->get_button_index() == BUTTON_WHEEL_DOWN) {
-
+	if (mb.is_valid() && mb->is_pressed() && mb->get_command() && mb->get_button_index() == BUTTON_WHEEL_UP) {
 		timeline->get_zoom()->set_value(timeline->get_zoom()->get_value() * 1.05);
 		scroll->accept_event();
 	}
 
-	if (mb.is_valid() && mb->is_pressed() && mb->get_command() && mb->get_button_index() == BUTTON_WHEEL_UP) {
-
+	if (mb.is_valid() && mb->is_pressed() && mb->get_command() && mb->get_button_index() == BUTTON_WHEEL_DOWN) {
 		timeline->get_zoom()->set_value(timeline->get_zoom()->get_value() / 1.05);
 		scroll->accept_event();
 	}

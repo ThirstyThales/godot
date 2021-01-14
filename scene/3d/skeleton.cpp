@@ -5,8 +5,8 @@
 /*                           GODOT ENGINE                                */
 /*                      https://godotengine.org                          */
 /*************************************************************************/
-/* Copyright (c) 2007-2020 Juan Linietsky, Ariel Manzur.                 */
-/* Copyright (c) 2014-2020 Godot Engine contributors (cf. AUTHORS.md).   */
+/* Copyright (c) 2007-2021 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2021 Godot Engine contributors (cf. AUTHORS.md).   */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -51,6 +51,10 @@ void SkinReference::_bind_methods() {
 
 RID SkinReference::get_skeleton() const {
 	return skeleton;
+}
+
+Skeleton *SkinReference::get_skeleton_node() const {
+	return skeleton_node;
 }
 
 Ref<Skin> SkinReference::get_skin() const {
@@ -371,8 +375,16 @@ void Skeleton::_notification(int p_what) {
 			}
 
 			dirty = false;
+			emit_signal("skeleton_updated");
 		} break;
 	}
+}
+
+void Skeleton::clear_bones_global_pose_override() {
+	for (int i = 0; i < bones.size(); i += 1) {
+		bones.write[i].global_pose_override_amount = 0;
+	}
+	_make_dirty();
 }
 
 void Skeleton::set_bone_global_pose_override(int p_bone, const Transform &p_pose, float p_amount, bool p_persistent) {
@@ -869,6 +881,7 @@ void Skeleton::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_bone_pose", "bone_idx"), &Skeleton::get_bone_pose);
 	ClassDB::bind_method(D_METHOD("set_bone_pose", "bone_idx", "pose"), &Skeleton::set_bone_pose);
 
+	ClassDB::bind_method(D_METHOD("clear_bones_global_pose_override"), &Skeleton::clear_bones_global_pose_override);
 	ClassDB::bind_method(D_METHOD("set_bone_global_pose_override", "bone_idx", "pose", "amount", "persistent"), &Skeleton::set_bone_global_pose_override, DEFVAL(false));
 	ClassDB::bind_method(D_METHOD("get_bone_global_pose", "bone_idx"), &Skeleton::get_bone_global_pose);
 
@@ -883,6 +896,8 @@ void Skeleton::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("physical_bones_remove_collision_exception", "exception"), &Skeleton::physical_bones_remove_collision_exception);
 
 #endif // _3D_DISABLED
+
+	ADD_SIGNAL(MethodInfo("skeleton_updated"));
 
 	BIND_CONSTANT(NOTIFICATION_UPDATE_SKELETON);
 }

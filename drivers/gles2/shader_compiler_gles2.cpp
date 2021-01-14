@@ -5,8 +5,8 @@
 /*                           GODOT ENGINE                                */
 /*                      https://godotengine.org                          */
 /*************************************************************************/
-/* Copyright (c) 2007-2020 Juan Linietsky, Ariel Manzur.                 */
-/* Copyright (c) 2014-2020 Godot Engine contributors (cf. AUTHORS.md).   */
+/* Copyright (c) 2007-2021 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2021 Godot Engine contributors (cf. AUTHORS.md).   */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -265,7 +265,7 @@ void ShaderCompilerGLES2::_dump_function_deps(SL::ShaderNode *p_node, const Stri
 	}
 }
 
-String ShaderCompilerGLES2::_dump_node_code(SL::Node *p_node, int p_level, GeneratedCode &r_gen_code, IdentifierActions &p_actions, const DefaultIdentifierActions &p_default_actions, bool p_assigning) {
+String ShaderCompilerGLES2::_dump_node_code(SL::Node *p_node, int p_level, GeneratedCode &r_gen_code, IdentifierActions &p_actions, const DefaultIdentifierActions &p_default_actions, bool p_assigning, bool p_use_scope) {
 
 	StringBuilder code;
 
@@ -368,14 +368,14 @@ String ShaderCompilerGLES2::_dump_node_code(SL::Node *p_node, int p_level, Gener
 
 			// constants
 
-			for (Map<StringName, SL::ShaderNode::Constant>::Element *E = snode->constants.front(); E; E = E->next()) {
+			for (int i = 0; i < snode->vconstants.size(); i++) {
 				String gcode;
 				gcode += "const ";
-				gcode += _prestr(E->get().precision);
-				gcode += _typestr(E->get().type);
-				gcode += " " + _mkid(E->key());
+				gcode += _prestr(snode->vconstants[i].precision);
+				gcode += _typestr(snode->vconstants[i].type);
+				gcode += " " + _mkid(String(snode->vconstants[i].name));
 				gcode += "=";
-				gcode += _dump_node_code(E->get().initializer, p_level, r_gen_code, p_actions, p_default_actions, p_assigning);
+				gcode += _dump_node_code(snode->vconstants[i].initializer, p_level, r_gen_code, p_actions, p_default_actions, p_assigning);
 				gcode += ";\n";
 				vertex_global += gcode;
 				fragment_global += gcode;
@@ -488,12 +488,15 @@ String ShaderCompilerGLES2::_dump_node_code(SL::Node *p_node, int p_level, Gener
 
 			if (p_default_actions.usage_defines.has(var_node->name) && !used_name_defines.has(var_node->name)) {
 				String define = p_default_actions.usage_defines[var_node->name];
+				String node_name = define.substr(1, define.length());
 
 				if (define.begins_with("@")) {
-					define = p_default_actions.usage_defines[define.substr(1, define.length())];
+					define = p_default_actions.usage_defines[node_name];
 				}
 
-				r_gen_code.custom_defines.push_back(define.utf8());
+				if (!used_name_defines.has(node_name)) {
+					r_gen_code.custom_defines.push_back(define.utf8());
+				}
 				used_name_defines.insert(var_node->name);
 			}
 
@@ -550,12 +553,15 @@ String ShaderCompilerGLES2::_dump_node_code(SL::Node *p_node, int p_level, Gener
 
 			if (p_default_actions.usage_defines.has(arr_node->name) && !used_name_defines.has(arr_node->name)) {
 				String define = p_default_actions.usage_defines[arr_node->name];
+				String node_name = define.substr(1, define.length());
 
 				if (define.begins_with("@")) {
-					define = p_default_actions.usage_defines[define.substr(1, define.length())];
+					define = p_default_actions.usage_defines[node_name];
 				}
 
-				r_gen_code.custom_defines.push_back(define.utf8());
+				if (!used_name_defines.has(node_name)) {
+					r_gen_code.custom_defines.push_back(define.utf8());
+				}
 				used_name_defines.insert(arr_node->name);
 			}
 
@@ -572,7 +578,7 @@ String ShaderCompilerGLES2::_dump_node_code(SL::Node *p_node, int p_level, Gener
 
 			if (arr_node->call_expression != NULL) {
 				code += ".";
-				code += _dump_node_code(arr_node->call_expression, p_level, r_gen_code, p_actions, p_default_actions, p_assigning);
+				code += _dump_node_code(arr_node->call_expression, p_level, r_gen_code, p_actions, p_default_actions, p_assigning, false);
 			}
 
 			if (arr_node->index_expression != NULL) {
@@ -619,13 +625,10 @@ String ShaderCompilerGLES2::_dump_node_code(SL::Node *p_node, int p_level, Gener
 				} break;
 
 				case SL::OP_ASSIGN_MOD: {
-					code += _dump_node_code(op_node->arguments[0], p_level, r_gen_code, p_actions, p_default_actions, true);
-					code += " = ";
-					code += "mod(";
-					code += _dump_node_code(op_node->arguments[0], p_level, r_gen_code, p_actions, p_default_actions, true);
-					code += ", ";
-					code += _dump_node_code(op_node->arguments[1], p_level, r_gen_code, p_actions, p_default_actions, p_assigning);
-					code += ")";
+					String a = _dump_node_code(op_node->arguments[0], p_level, r_gen_code, p_actions, p_default_actions, p_assigning);
+					String n = _dump_node_code(op_node->arguments[1], p_level, r_gen_code, p_actions, p_default_actions, p_assigning);
+					code += a + " = " + n + " == 0 ? 0 : ";
+					code += a + " - " + n + " * (" + a + " / " + n + ")";
 				} break;
 
 				case SL::OP_BIT_INVERT:
@@ -656,7 +659,8 @@ String ShaderCompilerGLES2::_dump_node_code(SL::Node *p_node, int p_level, Gener
 						if (var_node->name == "texture") {
 							// emit texture call
 
-							if (op_node->arguments[1]->get_datatype() == SL::TYPE_SAMPLER2D) {
+							if (op_node->arguments[1]->get_datatype() == SL::TYPE_SAMPLER2D ||
+									op_node->arguments[1]->get_datatype() == SL::TYPE_SAMPLEREXT) {
 								code += "texture2D";
 							} else if (op_node->arguments[1]->get_datatype() == SL::TYPE_SAMPLERCUBE) {
 								code += "textureCube";
@@ -725,12 +729,15 @@ String ShaderCompilerGLES2::_dump_node_code(SL::Node *p_node, int p_level, Gener
 
 					if (p_default_actions.usage_defines.has(var_node->name) && !used_name_defines.has(var_node->name)) {
 						String define = p_default_actions.usage_defines[var_node->name];
+						String node_name = define.substr(1, define.length());
 
 						if (define.begins_with("@")) {
-							define = p_default_actions.usage_defines[define.substr(1, define.length())];
+							define = p_default_actions.usage_defines[node_name];
 						}
 
-						r_gen_code.custom_defines.push_back(define.utf8());
+						if (!used_name_defines.has(node_name)) {
+							r_gen_code.custom_defines.push_back(define.utf8());
+						}
 						used_name_defines.insert(var_node->name);
 					}
 
@@ -754,22 +761,24 @@ String ShaderCompilerGLES2::_dump_node_code(SL::Node *p_node, int p_level, Gener
 				} break;
 
 				case SL::OP_MOD: {
-
-					code += "mod(float(";
-					code += _dump_node_code(op_node->arguments[0], p_level, r_gen_code, p_actions, p_default_actions, p_assigning);
-					code += "), float(";
-					code += _dump_node_code(op_node->arguments[1], p_level, r_gen_code, p_actions, p_default_actions, p_assigning);
-					code += "))";
+					String a = _dump_node_code(op_node->arguments[0], p_level, r_gen_code, p_actions, p_default_actions, p_assigning);
+					String n = _dump_node_code(op_node->arguments[1], p_level, r_gen_code, p_actions, p_default_actions, p_assigning);
+					code += "(" + n + " == 0 ? 0 : ";
+					code += a + " - " + n + " * (" + a + " / " + n + "))";
 				} break;
 
 				default: {
-					code += "(";
+					if (p_use_scope) {
+						code += "(";
+					}
 					code += _dump_node_code(op_node->arguments[0], p_level, r_gen_code, p_actions, p_default_actions, p_assigning);
 					code += " ";
 					code += _opstr(op_node->op);
 					code += " ";
 					code += _dump_node_code(op_node->arguments[1], p_level, r_gen_code, p_actions, p_default_actions, p_assigning);
-					code += ")";
+					if (p_use_scope) {
+						code += ")";
+					}
 				} break;
 			}
 		} break;
@@ -902,6 +911,7 @@ ShaderCompilerGLES2::ShaderCompilerGLES2() {
 	actions[VS::SHADER_CANVAS_ITEM].renames["INSTANCE_CUSTOM"] = "instance_custom";
 
 	actions[VS::SHADER_CANVAS_ITEM].renames["COLOR"] = "color";
+	actions[VS::SHADER_CANVAS_ITEM].renames["MODULATE"] = "final_modulate";
 	actions[VS::SHADER_CANVAS_ITEM].renames["NORMAL"] = "normal";
 	actions[VS::SHADER_CANVAS_ITEM].renames["NORMALMAP"] = "normal_map";
 	actions[VS::SHADER_CANVAS_ITEM].renames["NORMALMAP_DEPTH"] = "normal_depth";
@@ -923,6 +933,7 @@ ShaderCompilerGLES2::ShaderCompilerGLES2() {
 	actions[VS::SHADER_CANVAS_ITEM].renames["SHADOW_VEC"] = "shadow_vec";
 
 	actions[VS::SHADER_CANVAS_ITEM].usage_defines["COLOR"] = "#define COLOR_USED\n";
+	actions[VS::SHADER_CANVAS_ITEM].usage_defines["MODULATE"] = "#define MODULATE_USED\n";
 	actions[VS::SHADER_CANVAS_ITEM].usage_defines["SCREEN_TEXTURE"] = "#define SCREEN_TEXTURE_USED\n";
 	actions[VS::SHADER_CANVAS_ITEM].usage_defines["SCREEN_UV"] = "#define SCREEN_UV_USED\n";
 	actions[VS::SHADER_CANVAS_ITEM].usage_defines["SCREEN_PIXEL_SIZE"] = "@SCREEN_UV";

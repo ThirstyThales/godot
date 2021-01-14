@@ -5,8 +5,8 @@
 /*                           GODOT ENGINE                                */
 /*                      https://godotengine.org                          */
 /*************************************************************************/
-/* Copyright (c) 2007-2020 Juan Linietsky, Ariel Manzur.                 */
-/* Copyright (c) 2014-2020 Godot Engine contributors (cf. AUTHORS.md).   */
+/* Copyright (c) 2007-2021 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2021 Godot Engine contributors (cf. AUTHORS.md).   */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -450,8 +450,8 @@ void ImportDock::_reimport() {
 
 		String importer_name = params->importer->get_importer_name();
 
-		if (params->checking) {
-			//update only what edited (checkboxes)
+		if (params->checking && config->get_value("remap", "importer") == params->importer->get_importer_name()) {
+			//update only what is edited (checkboxes) if the importer is the same
 			for (List<PropertyInfo>::Element *E = params->properties.front(); E; E = E->next()) {
 				if (params->checked.has(E->get().name)) {
 					config->set_value("params", E->get().name, params->values[E->get().name]);
@@ -460,7 +460,9 @@ void ImportDock::_reimport() {
 		} else {
 			//override entirely
 			config->set_value("remap", "importer", importer_name);
-			config->erase_section("params");
+			if (config->has_section("params")) {
+				config->erase_section("params");
+			}
 
 			for (List<PropertyInfo>::Element *E = params->properties.front(); E; E = E->next()) {
 				config->set_value("params", E->get().name, params->values[E->get().name]);
@@ -563,7 +565,7 @@ ImportDock::ImportDock() {
 	hb->add_spacer();
 
 	reimport_confirm = memnew(ConfirmationDialog);
-	reimport_confirm->get_ok()->set_text(TTR("Save scenes, re-import and restart"));
+	reimport_confirm->get_ok()->set_text(TTR("Save Scenes, Re-Import, and Restart"));
 	add_child(reimport_confirm);
 	reimport_confirm->connect("confirmed", this, "_reimport_and_restart");
 

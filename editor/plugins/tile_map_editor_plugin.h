@@ -5,8 +5,8 @@
 /*                           GODOT ENGINE                                */
 /*                      https://godotengine.org                          */
 /*************************************************************************/
-/* Copyright (c) 2007-2020 Juan Linietsky, Ariel Manzur.                 */
-/* Copyright (c) 2014-2020 Godot Engine contributors (cf. AUTHORS.md).   */
+/* Copyright (c) 2007-2021 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2021 Godot Engine contributors (cf. AUTHORS.md).   */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -119,6 +119,7 @@ class TileMapEditor : public VBoxContainer {
 	Rect2i rectangle;
 
 	Point2i over_tile;
+	bool refocus_over_tile;
 
 	bool *bucket_cache_visited;
 	Rect2i bucket_cache_rect;
@@ -192,6 +193,7 @@ class TileMapEditor : public VBoxContainer {
 	void _menu_option(int p_option);
 	void _palette_selected(int index);
 	void _palette_multi_selected(int index, bool selected);
+	void _palette_input(const Ref<InputEvent> &p_event);
 
 	Dictionary _create_cell_dictionary(int tile, bool flip_x, bool flip_y, bool transpose, Vector2 autotile_coord);
 	void _start_undo(const String &p_action);
@@ -211,6 +213,7 @@ class TileMapEditor : public VBoxContainer {
 
 protected:
 	void _notification(int p_what);
+	void _node_removed(Node *p_node);
 	static void _bind_methods();
 	CellOp _get_op_from_cell(const Point2i &p_pos);
 

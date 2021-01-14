@@ -5,8 +5,8 @@
 /*                           GODOT ENGINE                                */
 /*                      https://godotengine.org                          */
 /*************************************************************************/
-/* Copyright (c) 2007-2020 Juan Linietsky, Ariel Manzur.                 */
-/* Copyright (c) 2014-2020 Godot Engine contributors (cf. AUTHORS.md).   */
+/* Copyright (c) 2007-2021 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2021 Godot Engine contributors (cf. AUTHORS.md).   */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -247,8 +247,10 @@ void WindowDialog::_notification(int p_what) {
 		} break;
 
 		case NOTIFICATION_POPUP_HIDE: {
-			if (get_tree() && Engine::get_singleton()->is_editor_hint() && EditorNode::get_singleton() && !was_editor_dimmed)
+			if (get_tree() && Engine::get_singleton()->is_editor_hint() && EditorNode::get_singleton() && !was_editor_dimmed) {
 				EditorNode::get_singleton()->dim_editor(false);
+				set_pass_on_modal_close_click(false);
+			}
 		} break;
 #endif
 	}

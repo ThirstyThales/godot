@@ -5,8 +5,8 @@
 /*                           GODOT ENGINE                                */
 /*                      https://godotengine.org                          */
 /*************************************************************************/
-/* Copyright (c) 2007-2020 Juan Linietsky, Ariel Manzur.                 */
-/* Copyright (c) 2014-2020 Godot Engine contributors (cf. AUTHORS.md).   */
+/* Copyright (c) 2007-2021 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2021 Godot Engine contributors (cf. AUTHORS.md).   */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -1184,4 +1184,43 @@ Vector<Vector<Point2> > Geometry::_polypath_offset(const Vector<Point2> &p_polyp
 		polypaths.push_back(polypath);
 	}
 	return polypaths;
+}
+
+Vector<Vector3> Geometry::compute_convex_mesh_points(const Plane *p_planes, int p_plane_count) {
+
+	Vector<Vector3> points;
+
+	// Iterate through every unique combination of any three planes.
+	for (int i = p_plane_count - 1; i >= 0; i--) {
+		for (int j = i - 1; j >= 0; j--) {
+			for (int k = j - 1; k >= 0; k--) {
+
+				// Find the point where these planes all cross over (if they
+				// do at all).
+				Vector3 convex_shape_point;
+				if (p_planes[i].intersect_3(p_planes[j], p_planes[k], &convex_shape_point)) {
+
+					// See if any *other* plane excludes this point because it's
+					// on the wrong side.
+					bool excluded = false;
+					for (int n = 0; n < p_plane_count; n++) {
+						if (n != i && n != j && n != k) {
+							real_t dp = p_planes[n].normal.dot(convex_shape_point);
+							if (dp - p_planes[n].d > CMP_EPSILON) {
+								excluded = true;
+								break;
+							}
+						}
+					}
+
+					// Only add the point if it passed all tests.
+					if (!excluded) {
+						points.push_back(convex_shape_point);
+					}
+				}
+			}
+		}
+	}
+
+	return points;
 }

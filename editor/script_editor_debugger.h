@@ -5,8 +5,8 @@
 /*                           GODOT ENGINE                                */
 /*                      https://godotengine.org                          */
 /*************************************************************************/
-/* Copyright (c) 2007-2020 Juan Linietsky, Ariel Manzur.                 */
-/* Copyright (c) 2014-2020 Godot Engine contributors (cf. AUTHORS.md).   */
+/* Copyright (c) 2007-2021 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2021 Godot Engine contributors (cf. AUTHORS.md).   */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -100,6 +100,7 @@ private:
 	ObjectID inspected_object_id;
 	ScriptEditorDebuggerVariables *variables;
 	Map<ObjectID, ScriptEditorDebuggerInspectedObject *> remote_objects;
+	Set<RES> remote_dependencies;
 	Set<ObjectID> unfold_cache;
 
 	VBoxContainer *errors_tab;
@@ -110,7 +111,8 @@ private:
 
 	EditorFileDialog *file_dialog;
 	enum FileDialogMode {
-		SAVE_CSV,
+		SAVE_MONITORS_CSV,
+		SAVE_VRAM_CSV,
 		SAVE_NODE,
 	};
 	FileDialogMode file_dialog_mode;
@@ -151,6 +153,7 @@ private:
 
 	Tree *vmem_tree;
 	Button *vmem_refresh;
+	Button *vmem_export;
 	LineEdit *vmem_total;
 
 	Tree *stack_dump;
@@ -196,6 +199,7 @@ private:
 	int _update_scene_tree(TreeItem *parent, const Array &nodes, int current_index);
 
 	void _video_mem_request();
+	void _video_mem_export();
 
 	int _get_node_path_cache(const NodePath &p_path);
 

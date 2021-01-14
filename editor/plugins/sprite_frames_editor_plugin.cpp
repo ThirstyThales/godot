@@ -5,8 +5,8 @@
 /*                           GODOT ENGINE                                */
 /*                      https://godotengine.org                          */
 /*************************************************************************/
-/* Copyright (c) 2007-2020 Juan Linietsky, Ariel Manzur.                 */
-/* Copyright (c) 2014-2020 Godot Engine contributors (cf. AUTHORS.md).   */
+/* Copyright (c) 2007-2021 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2021 Godot Engine contributors (cf. AUTHORS.md).   */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -154,14 +154,21 @@ void SpriteFramesEditor::_sheet_add_frames() {
 
 	int fc = frames->get_frame_count(edited_anim);
 
+	AtlasTexture *atlas_source = Object::cast_to<AtlasTexture>(*split_sheet_preview->get_texture());
+
+	Rect2 region_rect = Rect2();
+
+	if (atlas_source && atlas_source->get_atlas().is_valid())
+		region_rect = atlas_source->get_region();
+
 	for (Set<int>::Element *E = frames_selected.front(); E; E = E->next()) {
 		int idx = E->get();
 		int width = size.width / h;
 		int height = size.height / v;
 		int xp = idx % h;
 		int yp = (idx - xp) / h;
-		int x = xp * width;
-		int y = yp * height;
+		int x = (xp * width) + region_rect.position.x;
+		int y = (yp * height) + region_rect.position.y;
 
 		Ref<AtlasTexture> at;
 		at.instance();
@@ -920,11 +927,16 @@ SpriteFramesEditor::SpriteFramesEditor() {
 	animations->connect("item_edited", this, "_animation_name_edited");
 	animations->set_allow_reselect(true);
 
+	HBoxContainer *hbc_anim_speed = memnew(HBoxContainer);
+	hbc_anim_speed->add_child(memnew(Label(TTR("Speed:"))));
+	vbc_animlist->add_child(hbc_anim_speed);
 	anim_speed = memnew(SpinBox);
-	vbc_animlist->add_margin_child(TTR("Speed (FPS):"), anim_speed);
+	anim_speed->set_suffix(TTR("FPS"));
 	anim_speed->set_min(0);
 	anim_speed->set_max(100);
 	anim_speed->set_step(0.01);
+	anim_speed->set_h_size_flags(SIZE_EXPAND_FILL);
+	hbc_anim_speed->add_child(anim_speed);
 	anim_speed->connect("value_changed", this, "_animation_fps_changed");
 
 	anim_loop = memnew(CheckButton);

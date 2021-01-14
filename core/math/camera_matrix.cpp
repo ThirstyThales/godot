@@ -5,8 +5,8 @@
 /*                           GODOT ENGINE                                */
 /*                      https://godotengine.org                          */
 /*************************************************************************/
-/* Copyright (c) 2007-2020 Juan Linietsky, Ariel Manzur.                 */
-/* Copyright (c) 2014-2020 Godot Engine contributors (cf. AUTHORS.md).   */
+/* Copyright (c) 2007-2021 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2021 Godot Engine contributors (cf. AUTHORS.md).   */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -145,7 +145,7 @@ void CameraMatrix::set_for_hmd(int p_eye, real_t p_aspect, real_t p_intraocular_
 	f3 *= p_oversample;
 
 	// always apply KEEP_WIDTH aspect ratio
-	f3 *= p_aspect;
+	f3 /= p_aspect;
 
 	switch (p_eye) {
 		case 1: { // left eye

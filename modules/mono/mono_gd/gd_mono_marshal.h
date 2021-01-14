@@ -5,8 +5,8 @@
 /*                           GODOT ENGINE                                */
 /*                      https://godotengine.org                          */
 /*************************************************************************/
-/* Copyright (c) 2007-2020 Juan Linietsky, Ariel Manzur.                 */
-/* Copyright (c) 2014-2020 Godot Engine contributors (cf. AUTHORS.md).   */
+/* Copyright (c) 2007-2021 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2021 Godot Engine contributors (cf. AUTHORS.md).   */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -122,9 +122,18 @@ Variant mono_object_to_variant_no_err(MonoObject *p_obj, const ManagedType &p_ty
 /// If the MonoObject* cannot be converted to Variant, then 'ToString()' is called instead.
 String mono_object_to_variant_string(MonoObject *p_obj, MonoException **r_exc);
 
+// System.Collections.Generic
+
+MonoObject *Dictionary_to_system_generic_dict(const Dictionary &p_dict, GDMonoClass *p_class, MonoReflectionType *p_key_reftype, MonoReflectionType *p_value_reftype);
+Dictionary system_generic_dict_to_Dictionary(MonoObject *p_obj, GDMonoClass *p_class, MonoReflectionType *p_key_reftype, MonoReflectionType *p_value_reftype);
+
+MonoObject *Array_to_system_generic_list(const Array &p_array, GDMonoClass *p_class, MonoReflectionType *p_elem_reftype);
+Array system_generic_list_to_Array(MonoObject *p_obj, GDMonoClass *p_class, MonoReflectionType *p_elem_reftype);
+
 // Array
 
 MonoArray *Array_to_mono_array(const Array &p_array);
+MonoArray *Array_to_mono_array(const Array &p_array, GDMonoClass *p_array_type_class);
 Array mono_array_to_Array(MonoArray *p_array);
 
 // PoolIntArray

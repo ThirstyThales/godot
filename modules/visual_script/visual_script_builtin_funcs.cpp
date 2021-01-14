@@ -5,8 +5,8 @@
 /*                           GODOT ENGINE                                */
 /*                      https://godotengine.org                          */
 /*************************************************************************/
-/* Copyright (c) 2007-2020 Juan Linietsky, Ariel Manzur.                 */
-/* Copyright (c) 2014-2020 Godot Engine contributors (cf. AUTHORS.md).   */
+/* Copyright (c) 2007-2021 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2021 Godot Engine contributors (cf. AUTHORS.md).   */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -506,9 +506,11 @@ PropertyInfo VisualScriptBuiltinFunc::get_output_value_port_info(int p_idx) cons
 		case MATH_CEIL: {
 			t = Variant::REAL;
 		} break;
-		case MATH_POSMOD:
-		case MATH_ROUND: {
+		case MATH_POSMOD: {
 			t = Variant::INT;
+		} break;
+		case MATH_ROUND: {
+			t = Variant::REAL;
 		} break;
 		case MATH_ABS: {
 			t = Variant::NIL;

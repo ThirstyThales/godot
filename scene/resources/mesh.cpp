@@ -5,8 +5,8 @@
 /*                           GODOT ENGINE                                */
 /*                      https://godotengine.org                          */
 /*************************************************************************/
-/* Copyright (c) 2007-2020 Juan Linietsky, Ariel Manzur.                 */
-/* Copyright (c) 2014-2020 Godot Engine contributors (cf. AUTHORS.md).   */
+/* Copyright (c) 2007-2021 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2021 Godot Engine contributors (cf. AUTHORS.md).   */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -254,10 +254,12 @@ Ref<Shape> Mesh::create_trimesh_shape() const {
 	PoolVector<Vector3> face_points;
 	face_points.resize(faces.size() * 3);
 
-	for (int i = 0; i < face_points.size(); i++) {
+	for (int i = 0; i < face_points.size(); i += 3) {
 
 		Face3 f = faces.get(i / 3);
-		face_points.set(i, f.vertex[i % 3]);
+		face_points.set(i, f.vertex[0]);
+		face_points.set(i + 1, f.vertex[1]);
+		face_points.set(i + 2, f.vertex[2]);
 	}
 
 	Ref<ConcavePolygonShape> shape = memnew(ConcavePolygonShape);

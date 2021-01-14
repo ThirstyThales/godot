@@ -5,8 +5,8 @@
 /*                           GODOT ENGINE                                */
 /*                      https://godotengine.org                          */
 /*************************************************************************/
-/* Copyright (c) 2007-2020 Juan Linietsky, Ariel Manzur.                 */
-/* Copyright (c) 2014-2020 Godot Engine contributors (cf. AUTHORS.md).   */
+/* Copyright (c) 2007-2021 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2021 Godot Engine contributors (cf. AUTHORS.md).   */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -51,6 +51,11 @@
 #include "scene/gui/separator.h"
 #include "scene/gui/texture_rect.h"
 #include "scene/gui/tool_button.h"
+
+// Used to test for GLES3 support.
+#ifndef SERVER_ENABLED
+#include "drivers/gles3/rasterizer_gles3.h"
+#endif
 
 static inline String get_project_key_from_path(const String &dir) {
 	return dir.replace("/", "::");
@@ -436,7 +441,7 @@ private:
 		_test_path();
 
 		if (p_text == "")
-			set_message(TTR("It would be a good idea to name your project."), MESSAGE_WARNING);
+			set_message(TTR("It would be a good idea to name your project."), MESSAGE_ERROR);
 	}
 
 	void ok_pressed() {
@@ -786,6 +791,9 @@ public:
 			_test_path();
 		}
 
+		// Reset the dialog to its initial size. Otherwise, the dialog window would be too large
+		// when opening a small dialog after closing a large dialog.
+		set_size(get_minimum_size());
 		popup_centered_minsize(Size2(500, 0) * EDSCALE);
 	}
 
@@ -875,6 +883,14 @@ public:
 		rasterizer_container->add_child(rshb);
 		rasterizer_button_group.instance();
 
+		// Enable GLES3 by default as it's the default value for the project setting.
+#ifndef SERVER_ENABLED
+		bool gles3_viable = RasterizerGLES3::is_viable() == OK;
+#else
+		// Whatever, project manager isn't even used in headless builds.
+		bool gles3_viable = false;
+#endif
+
 		Container *rvb = memnew(VBoxContainer);
 		rvb->set_h_size_flags(SIZE_EXPAND_FILL);
 		rshb->add_child(rvb);
@@ -882,8 +898,16 @@ public:
 		rs_button->set_button_group(rasterizer_button_group);
 		rs_button->set_text(TTR("OpenGL ES 3.0"));
 		rs_button->set_meta("driver_name", "GLES3");
-		rs_button->set_pressed(true);
 		rvb->add_child(rs_button);
+		if (gles3_viable) {
+			rs_button->set_pressed(true);
+		} else {
+			// If GLES3 can't be used, don't let users shoot themselves in the foot.
+			rs_button->set_disabled(true);
+			l = memnew(Label);
+			l->set_text(TTR("Not supported by your GPU drivers."));
+			rvb->add_child(l);
+		}
 		l = memnew(Label);
 		l->set_text(TTR("Higher visual quality\nAll features available\nIncompatible with older hardware\nNot recommended for web games"));
 		rvb->add_child(l);
@@ -897,6 +921,7 @@ public:
 		rs_button->set_button_group(rasterizer_button_group);
 		rs_button->set_text(TTR("OpenGL ES 2.0"));
 		rs_button->set_meta("driver_name", "GLES2");
+		rs_button->set_pressed(!gles3_viable);
 		rvb->add_child(rs_button);
 		l = memnew(Label);
 		l->set_text(TTR("Lower visual quality\nSome features not available\nWorks on most hardware\nRecommended for web games"));
@@ -942,6 +967,8 @@ public:
 		icon = NULL;
 		icon_needs_reload = true;
 		hover = false;
+
+		set_focus_mode(FocusMode::FOCUS_ALL);
 	}
 
 	void set_is_favorite(bool fav) {
@@ -1851,7 +1878,7 @@ void ProjectManager::_update_project_buttons() {
 	rename_btn->set_disabled(empty_selection || is_missing_project_selected);
 	run_btn->set_disabled(empty_selection || is_missing_project_selected);
 
-	erase_missing_btn->set_visible(_project_list->is_any_project_missing());
+	erase_missing_btn->set_disabled(!_project_list->is_any_project_missing());
 }
 
 void ProjectManager::_unhandled_input(const Ref<InputEvent> &p_ev) {
@@ -2035,6 +2062,14 @@ void ProjectManager::_open_selected_projects() {
 
 		args.push_back("--editor");
 
+		if (OS::get_singleton()->is_stdout_debug_enabled()) {
+			args.push_back("--debug");
+		}
+
+		if (OS::get_singleton()->is_stdout_verbose()) {
+			args.push_back("--verbose");
+		}
+
 		if (OS::get_singleton()->is_disable_crash_handler()) {
 			args.push_back("--disable-crash-handler");
 		}
@@ -2106,7 +2141,7 @@ void ProjectManager::_run_project_confirm() {
 		if (selected_main == "") {
 			run_error_diag->set_text(TTR("Can't run project: no main scene defined.\nPlease edit the project and set the main scene in the Project Settings under the \"Application\" category."));
 			run_error_diag->popup_centered();
-			return;
+			continue;
 		}
 
 		const String &selected = selected_list[i].project_key;
@@ -2115,7 +2150,7 @@ void ProjectManager::_run_project_confirm() {
 		if (!DirAccess::exists(path + "/.import")) {
 			run_error_diag->set_text(TTR("Can't run project: Assets need to be imported.\nPlease edit the project to trigger the initial import."));
 			run_error_diag->popup_centered();
-			return;
+			continue;
 		}
 
 		print_line("Running project: " + path + " (" + selected + ")");
@@ -2400,31 +2435,55 @@ ProjectManager::ProjectManager() {
 
 		switch (display_scale) {
 			case 0: {
-				// Try applying a suitable display scale automatically
+				// Try applying a suitable display scale automatically.
+#ifdef OSX_ENABLED
+				editor_set_scale(OS::get_singleton()->get_screen_max_scale());
+#else
 				const int screen = OS::get_singleton()->get_current_screen();
-				editor_set_scale(OS::get_singleton()->get_screen_dpi(screen) >= 192 && OS::get_singleton()->get_screen_size(screen).x > 2000 ? 2.0 : 1.0);
+				float scale;
+				if (OS::get_singleton()->get_screen_dpi(screen) >= 192 && OS::get_singleton()->get_screen_size(screen).y >= 1400) {
+					// hiDPI display.
+					scale = 2.0;
+				} else if (OS::get_singleton()->get_screen_size(screen).y <= 800) {
+					// Small loDPI display. Use a smaller display scale so that editor elements fit more easily.
+					// Icons won't look great, but this is better than having editor elements overflow from its window.
+					scale = 0.75;
+				} else {
+					scale = 1.0;
+				}
+
+				editor_set_scale(scale);
+#endif
 			} break;
 
-			case 1: editor_set_scale(0.75); break;
-			case 2: editor_set_scale(1.0); break;
-			case 3: editor_set_scale(1.25); break;
-			case 4: editor_set_scale(1.5); break;
-			case 5: editor_set_scale(1.75); break;
-			case 6: editor_set_scale(2.0); break;
-
-			default: {
+			case 1:
+				editor_set_scale(0.75);
+				break;
+			case 2:
+				editor_set_scale(1.0);
+				break;
+			case 3:
+				editor_set_scale(1.25);
+				break;
+			case 4:
+				editor_set_scale(1.5);
+				break;
+			case 5:
+				editor_set_scale(1.75);
+				break;
+			case 6:
+				editor_set_scale(2.0);
+				break;
+			default:
 				editor_set_scale(custom_display_scale);
-			} break;
+				break;
 		}
 
 		// Define a minimum window size to prevent UI elements from overlapping or being cut off
 		OS::get_singleton()->set_min_window_size(Size2(750, 420) * EDSCALE);
 
-#ifndef OSX_ENABLED
-		// The macOS platform implementation uses its own hiDPI window resizing code
 		// TODO: Resize windows on hiDPI displays on Windows and Linux and remove the line below
 		OS::get_singleton()->set_window_size(OS::get_singleton()->get_window_size() * MAX(1, EDSCALE));
-#endif
 	}
 
 	FileDialog::set_default_show_hidden_files(EditorSettings::get_singleton()->get("filesystem/file_dialog/show_hidden_files"));
@@ -2447,7 +2506,8 @@ ProjectManager::ProjectManager() {
 
 	String cp;
 	cp += 0xA9;
-	OS::get_singleton()->set_window_title(VERSION_NAME + String(" - ") + TTR("Project Manager") + " - " + cp + " 2007-2020 Juan Linietsky, Ariel Manzur & Godot Contributors");
+	// TRANSLATORS: This refers to the application where users manage their Godot projects.
+	OS::get_singleton()->set_window_title(VERSION_NAME + String(" - ") + TTR("Project Manager") + " - " + cp + " 2007-2021 Juan Linietsky, Ariel Manzur & Godot Contributors");
 
 	Control *center_box = memnew(Control);
 	center_box->set_v_size_flags(SIZE_EXPAND_FILL);
@@ -2510,6 +2570,7 @@ ProjectManager::ProjectManager() {
 	_project_list->set_enable_h_scroll(false);
 
 	VBoxContainer *tree_vb = memnew(VBoxContainer);
+	tree_vb->set_custom_minimum_size(Size2(120, 120));
 	tree_hb->add_child(tree_vb);
 
 	Button *open = memnew(Button);
@@ -2758,6 +2819,8 @@ void ProjectListFilter::add_filter_option() {
 void ProjectListFilter::add_search_box() {
 	search_box = memnew(LineEdit);
 	search_box->set_placeholder(TTR("Search"));
+	search_box->set_tooltip(
+			TTR("The search box filters projects by name and last path component.\nTo filter projects by name and full path, the query must contain at least one `/` character."));
 	search_box->connect("text_changed", this, "_search_text_changed");
 	search_box->set_h_size_flags(SIZE_EXPAND_FILL);
 	add_child(search_box);

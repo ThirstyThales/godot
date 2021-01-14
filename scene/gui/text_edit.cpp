@@ -5,8 +5,8 @@
 /*                           GODOT ENGINE                                */
 /*                      https://godotengine.org                          */
 /*************************************************************************/
-/* Copyright (c) 2007-2020 Juan Linietsky, Ariel Manzur.                 */
-/* Copyright (c) 2014-2020 Godot Engine contributors (cf. AUTHORS.md).   */
+/* Copyright (c) 2007-2021 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2021 Godot Engine contributors (cf. AUTHORS.md).   */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -379,29 +379,9 @@ void TextEdit::_update_scrollbars() {
 		total_width += cache.minimap_width;
 	}
 
-	bool use_hscroll = true;
-	bool use_vscroll = true;
-
-	// Thanks yessopie for this clever bit of logic.
-	if (total_rows <= visible_rows && total_width <= visible_width) {
-
-		use_hscroll = false;
-		use_vscroll = false;
-	} else {
-
-		if (total_rows > visible_rows && total_width <= visible_width) {
-			use_hscroll = false;
-		}
-
-		if (total_rows <= visible_rows && total_width > visible_width) {
-			use_vscroll = false;
-		}
-	}
-
 	updating_scrolls = true;
 
-	if (use_vscroll) {
-
+	if (total_rows > visible_rows) {
 		v_scroll->show();
 		v_scroll->set_max(total_rows + get_visible_rows_offset());
 		v_scroll->set_page(visible_rows + get_visible_rows_offset());
@@ -420,8 +400,7 @@ void TextEdit::_update_scrollbars() {
 		v_scroll->hide();
 	}
 
-	if (use_hscroll && !is_wrap_enabled()) {
-
+	if (total_width > visible_width && !is_wrap_enabled()) {
 		h_scroll->show();
 		h_scroll->set_max(total_width);
 		h_scroll->set_page(visible_width);
@@ -933,7 +912,7 @@ void TextEdit::_notification(int p_what) {
 				// calculate viewport size and y offset
 				int viewport_height = (draw_amount - 1) * minimap_line_height;
 				int control_height = _get_control_height() - viewport_height;
-				int viewport_offset_y = round(get_scroll_pos_for_line(first_visible_line) * control_height) / ((v_scroll->get_max() <= minimap_visible_lines) ? (minimap_visible_lines - draw_amount) : (v_scroll->get_max() - draw_amount));
+				int viewport_offset_y = round(get_scroll_pos_for_line(first_visible_line + 1) * control_height) / ((v_scroll->get_max() <= minimap_visible_lines) ? (minimap_visible_lines - draw_amount) : (v_scroll->get_max() - draw_amount));
 
 				// calculate the first line.
 				int num_lines_before = round((viewport_offset_y) / minimap_line_height);
@@ -1135,8 +1114,7 @@ void TextEdit::_notification(int p_what) {
 
 					int ofs_y = (i * get_row_height() + cache.line_spacing / 2) + ofs_readonly;
 					ofs_y -= cursor.wrap_ofs * get_row_height();
-					if (smooth_scroll_enabled)
-						ofs_y += (-get_v_scroll_offset()) * get_row_height();
+					ofs_y -= get_v_scroll_offset() * get_row_height();
 
 					// Check if line contains highlighted word.
 					int highlighted_text_col = -1;
@@ -1150,7 +1128,7 @@ void TextEdit::_notification(int p_what) {
 						highlighted_text_col = _get_column_pos_of_word(highlighted_text, str, SEARCH_MATCH_CASE | SEARCH_WHOLE_WORDS, 0);
 
 					if (select_identifiers_enabled && highlighted_word.length() != 0) {
-						if (_is_char(highlighted_word[0])) {
+						if (_is_char(highlighted_word[0]) || highlighted_word[0] == '.') {
 							highlighted_word_col = _get_column_pos_of_word(highlighted_word, fullstr, SEARCH_MATCH_CASE | SEARCH_WHOLE_WORDS, 0);
 						}
 					}
@@ -1574,7 +1552,7 @@ void TextEdit::_notification(int p_what) {
 			}
 
 			bool completion_below = false;
-			if (completion_active) {
+			if (completion_active && completion_options.size() > 0) {
 				// Code completion box.
 				Ref<StyleBox> csb = get_stylebox("completion");
 				int maxlines = get_constant("completion_lines");
@@ -1582,13 +1560,14 @@ void TextEdit::_notification(int p_what) {
 				int scrollw = get_constant("completion_scroll_width");
 				Color scrollc = get_color("completion_scroll_color");
 
-				int lines = MIN(completion_options.size(), maxlines);
+				const int completion_options_size = completion_options.size();
+				int lines = MIN(completion_options_size, maxlines);
 				int w = 0;
 				int h = lines * get_row_height();
 				int nofs = cache.font->get_string_size(completion_base).width;
 
-				if (completion_options.size() < 50) {
-					for (int i = 0; i < completion_options.size(); i++) {
+				if (completion_options_size < 50) {
+					for (int i = 0; i < completion_options_size; i++) {
 						int w2 = MIN(cache.font->get_string_size(completion_options[i].display).x, cmax_width);
 						if (w2 > w)
 							w = w2;
@@ -1601,6 +1580,17 @@ void TextEdit::_notification(int p_what) {
 				const int icon_hsep = get_constant("hseparation", "ItemList");
 				Size2 icon_area_size(get_row_height(), get_row_height());
 				w += icon_area_size.width + icon_hsep;
+
+				int line_from = CLAMP(completion_index - lines / 2, 0, completion_options_size - lines);
+
+				for (int i = 0; i < lines; i++) {
+					int l = line_from + i;
+					ERR_CONTINUE(l < 0 || l >= completion_options_size);
+					if (completion_options[l].default_value.get_type() == Variant::COLOR) {
+						w += icon_area_size.width;
+						break;
+					}
+				}
 
 				int th = h + csb->get_minimum_size().y;
 
@@ -1619,7 +1609,7 @@ void TextEdit::_notification(int p_what) {
 
 				completion_rect.size.width = w + 2;
 				completion_rect.size.height = h;
-				if (completion_options.size() <= maxlines)
+				if (completion_options_size <= maxlines)
 					scrollw = 0;
 
 				draw_style_box(csb, Rect2(completion_rect.position - csb->get_offset(), completion_rect.size + csb->get_minimum_size() + Size2(scrollw, 0)));
@@ -1627,14 +1617,13 @@ void TextEdit::_notification(int p_what) {
 				if (cache.completion_background_color.a > 0.01) {
 					VisualServer::get_singleton()->canvas_item_add_rect(ci, Rect2(completion_rect.position, completion_rect.size + Size2(scrollw, 0)), cache.completion_background_color);
 				}
-				int line_from = CLAMP(completion_index - lines / 2, 0, completion_options.size() - lines);
 				VisualServer::get_singleton()->canvas_item_add_rect(ci, Rect2(Point2(completion_rect.position.x, completion_rect.position.y + (completion_index - line_from) * get_row_height()), Size2(completion_rect.size.width, get_row_height())), cache.completion_selected_color);
 				draw_rect(Rect2(completion_rect.position + Vector2(icon_area_size.x + icon_hsep, 0), Size2(MIN(nofs, completion_rect.size.width - (icon_area_size.x + icon_hsep)), completion_rect.size.height)), cache.completion_existing_color);
 
 				for (int i = 0; i < lines; i++) {
 
 					int l = line_from + i;
-					ERR_CONTINUE(l < 0 || l >= completion_options.size());
+					ERR_CONTINUE(l < 0 || l >= completion_options_size);
 					Color text_color = cache.completion_font_color;
 					for (int j = 0; j < color_regions.size(); j++) {
 						if (completion_options[l].insert_text.begins_with(color_regions[j].begin_key)) {
@@ -1656,13 +1645,18 @@ void TextEdit::_notification(int p_what) {
 					}
 
 					title_pos.x = icon_area.position.x + icon_area.size.width + icon_hsep;
+
+					if (completion_options[l].default_value.get_type() == Variant::COLOR) {
+						draw_rect(Rect2(Point2(completion_rect.position.x + completion_rect.size.width - icon_area_size.x, icon_area.position.y), icon_area_size), (Color)completion_options[l].default_value);
+					}
+
 					draw_string(cache.font, title_pos, completion_options[l].display, text_color, completion_rect.size.width - (icon_area_size.x + icon_hsep));
 				}
 
 				if (scrollw) {
 					// Draw a small scroll rectangle to show a position in the options.
-					float r = maxlines / (float)completion_options.size();
-					float o = line_from / (float)completion_options.size();
+					float r = (float)maxlines / completion_options_size;
+					float o = (float)line_from / completion_options_size;
 					draw_rect(Rect2(completion_rect.position.x + completion_rect.size.width, completion_rect.position.y + o * completion_rect.size.y, scrollw, completion_rect.size.y * r), scrollc);
 				}
 
@@ -1761,8 +1755,24 @@ void TextEdit::_notification(int p_what) {
 			Point2 cursor_pos = Point2(cursor_get_column(), cursor_get_line()) * get_row_height();
 			OS::get_singleton()->set_ime_position(get_global_position() + cursor_pos);
 
-			if (OS::get_singleton()->has_virtual_keyboard())
-				OS::get_singleton()->show_virtual_keyboard(get_text(), get_global_rect());
+			if (OS::get_singleton()->has_virtual_keyboard() && virtual_keyboard_enabled) {
+				int cursor_start = -1;
+				int cursor_end = -1;
+
+				if (!selection.active) {
+					String full_text = _base_get_text(0, 0, cursor.line, cursor.column);
+
+					cursor_start = full_text.length();
+				} else {
+					String pre_text = _base_get_text(0, 0, selection.from_line, selection.from_column);
+					String post_text = _base_get_text(selection.from_line, selection.from_column, selection.to_line, selection.to_column);
+
+					cursor_start = pre_text.length();
+					cursor_end = cursor_start + post_text.length();
+				}
+
+				OS::get_singleton()->show_virtual_keyboard(get_text(), get_global_rect(), true, -1, cursor_start, cursor_end);
+			}
 		} break;
 		case NOTIFICATION_FOCUS_EXIT: {
 
@@ -1775,7 +1785,7 @@ void TextEdit::_notification(int p_what) {
 			ime_text = "";
 			ime_selection = Point2();
 
-			if (OS::get_singleton()->has_virtual_keyboard())
+			if (OS::get_singleton()->has_virtual_keyboard() && virtual_keyboard_enabled)
 				OS::get_singleton()->hide_virtual_keyboard();
 		} break;
 		case MainLoop::NOTIFICATION_OS_IME_UPDATE: {
@@ -1848,6 +1858,7 @@ void TextEdit::_consume_pair_symbol(CharType ch) {
 
 	bool in_single_quote = false;
 	bool in_double_quote = false;
+	bool found_comment = false;
 
 	int c = 0;
 	while (c < line.length()) {
@@ -1857,6 +1868,9 @@ void TextEdit::_consume_pair_symbol(CharType ch) {
 			if (cursor.column == c) {
 				break;
 			}
+		} else if (!in_single_quote && !in_double_quote && line[c] == '#') {
+			found_comment = true;
+			break;
 		} else {
 			if (line[c] == '\'' && !in_double_quote) {
 				in_single_quote = !in_single_quote;
@@ -1872,7 +1886,15 @@ void TextEdit::_consume_pair_symbol(CharType ch) {
 		}
 	}
 
-	//	Disallow inserting duplicated quotes while already in string
+	// Do not need to duplicate quotes while in comments
+	if (found_comment) {
+		insert_text_at_cursor(ch_single);
+		cursor_set_column(cursor_position_to_move);
+
+		return;
+	}
+
+	// Disallow inserting duplicated quotes while already in string
 	if ((in_single_quote || in_double_quote) && (ch == '"' || ch == '\'')) {
 		insert_text_at_cursor(ch_single);
 		cursor_set_column(cursor_position_to_move);
@@ -1988,6 +2010,9 @@ void TextEdit::indent_right() {
 
 	for (int i = start_line; i <= end_line; i++) {
 		String line_text = get_line(i);
+		if (line_text.size() == 0 && is_selection_active()) {
+			continue;
+		}
 		if (indent_using_spaces) {
 			// We don't really care where selection is - we just need to know indentation level at the beginning of the line.
 			int left = _find_first_non_whitespace_column_of_line(line_text);
@@ -2273,14 +2298,14 @@ void TextEdit::_gui_input(const Ref<InputEvent> &p_gui_input) {
 			if (mb->get_button_index() == BUTTON_WHEEL_UP && !mb->get_command()) {
 				if (mb->get_shift()) {
 					h_scroll->set_value(h_scroll->get_value() - (100 * mb->get_factor()));
-				} else {
+				} else if (v_scroll->is_visible()) {
 					_scroll_up(3 * mb->get_factor());
 				}
 			}
 			if (mb->get_button_index() == BUTTON_WHEEL_DOWN && !mb->get_command()) {
 				if (mb->get_shift()) {
 					h_scroll->set_value(h_scroll->get_value() + (100 * mb->get_factor()));
-				} else {
+				} else if (v_scroll->is_visible()) {
 					_scroll_down(3 * mb->get_factor());
 				}
 			}
@@ -6199,6 +6224,10 @@ void TextEdit::_push_current_op() {
 	current_op.type = TextOperation::TYPE_NONE;
 	current_op.text = "";
 	current_op.chain_forward = false;
+
+	if (undo_stack.size() > undo_stack_max_size) {
+		undo_stack.pop_front();
+	}
 }
 
 void TextEdit::set_indent_using_spaces(const bool p_use_spaces) {
@@ -6747,7 +6776,7 @@ void TextEdit::set_tooltip_request_func(Object *p_obj, const StringName &p_funct
 }
 
 void TextEdit::set_line(int line, String new_text) {
-	if (line < 0 || line > text.size())
+	if (line < 0 || line >= text.size())
 		return;
 	_remove_text(line, 0, line, text[line].length());
 	_insert_text(line, 0, new_text);
@@ -6966,6 +6995,10 @@ void TextEdit::set_shortcut_keys_enabled(bool p_enabled) {
 	_generate_context_menu();
 }
 
+void TextEdit::set_virtual_keyboard_enabled(bool p_enable) {
+	virtual_keyboard_enabled = p_enable;
+}
+
 void TextEdit::set_selecting_enabled(bool p_enabled) {
 	selecting_enabled = p_enabled;
 
@@ -6981,6 +7014,10 @@ bool TextEdit::is_selecting_enabled() const {
 
 bool TextEdit::is_shortcut_keys_enabled() const {
 	return shortcut_keys_enabled;
+}
+
+bool TextEdit::is_virtual_keyboard_enabled() const {
+	return virtual_keyboard_enabled;
 }
 
 PopupMenu *TextEdit::get_menu() const {
@@ -7017,6 +7054,7 @@ void TextEdit::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_line_count"), &TextEdit::get_line_count);
 	ClassDB::bind_method(D_METHOD("get_text"), &TextEdit::get_text);
 	ClassDB::bind_method(D_METHOD("get_line", "line"), &TextEdit::get_line);
+	ClassDB::bind_method(D_METHOD("set_line", "line", "new_text"), &TextEdit::set_line);
 
 	ClassDB::bind_method(D_METHOD("center_viewport_to_cursor"), &TextEdit::center_viewport_to_cursor);
 	ClassDB::bind_method(D_METHOD("cursor_set_column", "column", "adjust_viewport"), &TextEdit::cursor_set_column, DEFVAL(true));
@@ -7043,6 +7081,8 @@ void TextEdit::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("is_context_menu_enabled"), &TextEdit::is_context_menu_enabled);
 	ClassDB::bind_method(D_METHOD("set_shortcut_keys_enabled", "enable"), &TextEdit::set_shortcut_keys_enabled);
 	ClassDB::bind_method(D_METHOD("is_shortcut_keys_enabled"), &TextEdit::is_shortcut_keys_enabled);
+	ClassDB::bind_method(D_METHOD("set_virtual_keyboard_enabled", "enable"), &TextEdit::set_virtual_keyboard_enabled);
+	ClassDB::bind_method(D_METHOD("is_virtual_keyboard_enabled"), &TextEdit::is_virtual_keyboard_enabled);
 	ClassDB::bind_method(D_METHOD("set_selecting_enabled", "enable"), &TextEdit::set_selecting_enabled);
 	ClassDB::bind_method(D_METHOD("is_selecting_enabled"), &TextEdit::is_selecting_enabled);
 
@@ -7140,6 +7180,7 @@ void TextEdit::_bind_methods() {
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "override_selected_font_color"), "set_override_selected_font_color", "is_overriding_selected_font_color");
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "context_menu_enabled"), "set_context_menu_enabled", "is_context_menu_enabled");
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "shortcut_keys_enabled"), "set_shortcut_keys_enabled", "is_shortcut_keys_enabled");
+	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "virtual_keyboard_enabled"), "set_virtual_keyboard_enabled", "is_virtual_keyboard_enabled");
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "selecting_enabled"), "set_selecting_enabled", "is_selecting_enabled");
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "smooth_scrolling"), "set_smooth_scroll_enable", "is_smooth_scroll_enabled");
 	ADD_PROPERTY(PropertyInfo(Variant::REAL, "v_scroll_speed"), "set_v_scroll_speed", "get_v_scroll_speed");
@@ -7176,6 +7217,8 @@ void TextEdit::_bind_methods() {
 
 	GLOBAL_DEF("gui/timers/text_edit_idle_detect_sec", 3);
 	ProjectSettings::get_singleton()->set_custom_property_info("gui/timers/text_edit_idle_detect_sec", PropertyInfo(Variant::REAL, "gui/timers/text_edit_idle_detect_sec", PROPERTY_HINT_RANGE, "0,10,0.01,or_greater")); // No negative numbers.
+	GLOBAL_DEF("gui/common/text_edit_undo_stack_max_size", 1024);
+	ProjectSettings::get_singleton()->set_custom_property_info("gui/common/text_edit_undo_stack_max_size", PropertyInfo(Variant::INT, "gui/common/text_edit_undo_stack_max_size", PROPERTY_HINT_RANGE, "0,10000,1,or_greater")); // No negative numbers.
 }
 
 TextEdit::TextEdit() {
@@ -7255,6 +7298,7 @@ TextEdit::TextEdit() {
 
 	current_op.type = TextOperation::TYPE_NONE;
 	undo_enabled = true;
+	undo_stack_max_size = GLOBAL_GET("gui/common/text_edit_undo_stack_max_size");
 	undo_stack_pos = NULL;
 	setting_text = false;
 	last_dblclk = 0;

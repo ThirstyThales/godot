@@ -5,8 +5,8 @@
 /*                           GODOT ENGINE                                */
 /*                      https://godotengine.org                          */
 /*************************************************************************/
-/* Copyright (c) 2007-2020 Juan Linietsky, Ariel Manzur.                 */
-/* Copyright (c) 2014-2020 Godot Engine contributors (cf. AUTHORS.md).   */
+/* Copyright (c) 2007-2021 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2021 Godot Engine contributors (cf. AUTHORS.md).   */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -182,6 +182,10 @@ int AudioDriverManager::get_driver_count() {
 
 void AudioDriverManager::initialize(int p_driver) {
 	GLOBAL_DEF_RST("audio/enable_audio_input", false);
+	GLOBAL_DEF_RST("audio/mix_rate", DEFAULT_MIX_RATE);
+	GLOBAL_DEF_RST("audio/output_latency", DEFAULT_OUTPUT_LATENCY);
+	GLOBAL_DEF_RST("audio/output_latency.web", 50); // Safer default output_latency for web.
+
 	int failed_driver = -1;
 
 	// Check if there is a selected driver
@@ -943,6 +947,7 @@ bool AudioServer::is_bus_channel_active(int p_bus, int p_channel) const {
 }
 
 void AudioServer::set_global_rate_scale(float p_scale) {
+	ERR_FAIL_COND(p_scale <= 0);
 
 	global_rate_scale = p_scale;
 }

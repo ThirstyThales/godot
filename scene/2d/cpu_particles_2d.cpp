@@ -5,8 +5,8 @@
 /*                           GODOT ENGINE                                */
 /*                      https://godotengine.org                          */
 /*************************************************************************/
-/* Copyright (c) 2007-2020 Juan Linietsky, Ariel Manzur.                 */
-/* Copyright (c) 2014-2020 Godot Engine contributors (cf. AUTHORS.md).   */
+/* Copyright (c) 2007-2021 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2021 Godot Engine contributors (cf. AUTHORS.md).   */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -53,9 +53,11 @@ void CPUParticles2D::set_amount(int p_amount) {
 	{
 		PoolVector<Particle>::Write w = particles.write();
 
-		for (int i = 0; i < p_amount; i++) {
-			w[i].active = false;
-		}
+		// each particle must be set to false
+		// zeroing the data also prevents uninitialized memory being sent to GPU
+		zeromem(static_cast<void *>(&w[0]), p_amount * sizeof(Particle));
+		// cast to prevent compiler warning .. note this relies on Particle not containing any complex types.
+		// an alternative is to use some zero method per item but the generated code will be far less efficient.
 	}
 
 	particle_data.resize((8 + 4 + 1) * p_amount);
@@ -265,7 +267,7 @@ bool CPUParticles2D::get_fractional_delta() const {
 
 String CPUParticles2D::get_configuration_warning() const {
 
-	String warnings;
+	String warnings = Node2D::get_configuration_warning();
 
 	CanvasItemMaterial *mat = Object::cast_to<CanvasItemMaterial>(get_material().ptr());
 
@@ -273,7 +275,7 @@ String CPUParticles2D::get_configuration_warning() const {
 		if (get_param(PARAM_ANIM_SPEED) != 0.0 || get_param(PARAM_ANIM_OFFSET) != 0.0 ||
 				get_param_curve(PARAM_ANIM_SPEED).is_valid() || get_param_curve(PARAM_ANIM_OFFSET).is_valid()) {
 			if (warnings != String())
-				warnings += "\n";
+				warnings += "\n\n";
 			warnings += "- " + TTR("CPUParticles2D animation requires the usage of a CanvasItemMaterial with \"Particles Animation\" enabled.");
 		}
 	}
@@ -783,7 +785,11 @@ void CPUParticles2D::_particles_process(float p_delta) {
 					p.transform[2] = emission_points.get(random_idx);
 
 					if (emission_shape == EMISSION_SHAPE_DIRECTED_POINTS && emission_normals.size() == pc) {
-						p.velocity = emission_normals.get(random_idx);
+						Vector2 normal = emission_normals.get(random_idx);
+						Transform2D m2;
+						m2.set_axis(0, normal);
+						m2.set_axis(1, normal.tangent());
+						p.velocity = m2.basis_xform(p.velocity);
 					}
 
 					if (emission_colors.size() == pc) {
@@ -1020,21 +1026,21 @@ void CPUParticles2D::_update_particle_data_buffer() {
 				ptr[6] = 0;
 				ptr[7] = t.elements[2][1];
 
+				Color c = r[idx].color;
+				uint8_t *data8 = (uint8_t *)&ptr[8];
+				data8[0] = CLAMP(c.r * 255.0, 0, 255);
+				data8[1] = CLAMP(c.g * 255.0, 0, 255);
+				data8[2] = CLAMP(c.b * 255.0, 0, 255);
+				data8[3] = CLAMP(c.a * 255.0, 0, 255);
+
+				ptr[9] = r[idx].custom[0];
+				ptr[10] = r[idx].custom[1];
+				ptr[11] = r[idx].custom[2];
+				ptr[12] = r[idx].custom[3];
+
 			} else {
-				zeromem(ptr, sizeof(float) * 8);
+				zeromem(ptr, sizeof(float) * 13);
 			}
-
-			Color c = r[idx].color;
-			uint8_t *data8 = (uint8_t *)&ptr[8];
-			data8[0] = CLAMP(c.r * 255.0, 0, 255);
-			data8[1] = CLAMP(c.g * 255.0, 0, 255);
-			data8[2] = CLAMP(c.b * 255.0, 0, 255);
-			data8[3] = CLAMP(c.a * 255.0, 0, 255);
-
-			ptr[9] = r[idx].custom[0];
-			ptr[10] = r[idx].custom[1];
-			ptr[11] = r[idx].custom[2];
-			ptr[12] = r[idx].custom[3];
 
 			ptr += 13;
 		}
@@ -1345,7 +1351,7 @@ void CPUParticles2D::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("_texture_changed"), &CPUParticles2D::_texture_changed);
 
 	ADD_GROUP("Emission Shape", "emission_");
-	ADD_PROPERTY(PropertyInfo(Variant::INT, "emission_shape", PROPERTY_HINT_ENUM, "Point,Sphere,Box,Points,Directed Points"), "set_emission_shape", "get_emission_shape");
+	ADD_PROPERTY(PropertyInfo(Variant::INT, "emission_shape", PROPERTY_HINT_ENUM, "Point,Sphere,Box,Points,Directed Points", PROPERTY_USAGE_DEFAULT | PROPERTY_USAGE_UPDATE_ALL_IF_MODIFIED), "set_emission_shape", "get_emission_shape");
 	ADD_PROPERTY(PropertyInfo(Variant::REAL, "emission_sphere_radius", PROPERTY_HINT_RANGE, "0.01,128,0.01"), "set_emission_sphere_radius", "get_emission_sphere_radius");
 	ADD_PROPERTY(PropertyInfo(Variant::VECTOR2, "emission_rect_extents"), "set_emission_rect_extents", "get_emission_rect_extents");
 	ADD_PROPERTY(PropertyInfo(Variant::POOL_VECTOR2_ARRAY, "emission_points"), "set_emission_points", "get_emission_points");

@@ -5,8 +5,8 @@
 /*                           GODOT ENGINE                                */
 /*                      https://godotengine.org                          */
 /*************************************************************************/
-/* Copyright (c) 2007-2020 Juan Linietsky, Ariel Manzur.                 */
-/* Copyright (c) 2014-2020 Godot Engine contributors (cf. AUTHORS.md).   */
+/* Copyright (c) 2007-2021 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2021 Godot Engine contributors (cf. AUTHORS.md).   */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -46,6 +46,7 @@ class VisualServer : public Object {
 	static VisualServer *singleton;
 
 	int mm_policy;
+	bool render_loop_enabled = true;
 
 	void _camera_set_orthogonal(RID p_camera, float p_size, float p_z_near, float p_z_far);
 	void _canvas_item_add_style_box(RID p_item, const Rect2 &p_rect, const Rect2 &p_source, RID p_texture, const Vector<float> &p_margins, const Color &p_modulate = Color(1, 1, 1));
@@ -93,6 +94,7 @@ public:
 
 	enum TextureType {
 		TEXTURE_TYPE_2D,
+		TEXTURE_TYPE_EXTERNAL,
 		TEXTURE_TYPE_CUBEMAP,
 		TEXTURE_TYPE_2D_ARRAY,
 		TEXTURE_TYPE_3D,
@@ -192,6 +194,10 @@ public:
 
 	virtual void shader_set_default_texture_param(RID p_shader, const StringName &p_name, RID p_texture) = 0;
 	virtual RID shader_get_default_texture_param(RID p_shader, const StringName &p_name) const = 0;
+
+	virtual void shader_add_custom_define(RID p_shader, const String &p_define) = 0;
+	virtual void shader_get_custom_defines(RID p_shader, Vector<String> *p_defines) const = 0;
+	virtual void shader_remove_custom_define(RID p_shader, const String &p_define) = 0;
 
 	/* COMMON MATERIAL API */
 
@@ -436,6 +442,15 @@ public:
 	virtual void light_set_reverse_cull_face_mode(RID p_light, bool p_enabled) = 0;
 	virtual void light_set_use_gi(RID p_light, bool p_enable) = 0;
 
+	// bake mode
+	enum LightBakeMode {
+		LIGHT_BAKE_DISABLED,
+		LIGHT_BAKE_INDIRECT,
+		LIGHT_BAKE_ALL
+	};
+
+	virtual void light_set_bake_mode(RID p_light, LightBakeMode p_bake_mode) = 0;
+
 	// omni light
 	enum LightOmniShadowMode {
 		LIGHT_OMNI_SHADOW_DUAL_PARABOLOID,
@@ -665,6 +680,8 @@ public:
 	};
 
 	virtual void viewport_set_msaa(RID p_viewport, ViewportMSAA p_msaa) = 0;
+	virtual void viewport_set_use_fxaa(RID p_viewport, bool p_fxaa) = 0;
+	virtual void viewport_set_use_debanding(RID p_viewport, bool p_debanding) = 0;
 
 	enum ViewportUsage {
 		VIEWPORT_USAGE_2D,
@@ -684,6 +701,8 @@ public:
 		VIEWPORT_RENDER_INFO_SHADER_CHANGES_IN_FRAME,
 		VIEWPORT_RENDER_INFO_SURFACE_CHANGES_IN_FRAME,
 		VIEWPORT_RENDER_INFO_DRAW_CALLS_IN_FRAME,
+		VIEWPORT_RENDER_INFO_2D_ITEMS_IN_FRAME,
+		VIEWPORT_RENDER_INFO_2D_DRAW_CALLS_IN_FRAME,
 		VIEWPORT_RENDER_INFO_MAX
 	};
 
@@ -1011,6 +1030,8 @@ public:
 		INFO_SHADER_CHANGES_IN_FRAME,
 		INFO_SURFACE_CHANGES_IN_FRAME,
 		INFO_DRAW_CALLS_IN_FRAME,
+		INFO_2D_ITEMS_IN_FRAME,
+		INFO_2D_DRAW_CALLS_IN_FRAME,
 		INFO_USAGE_VIDEO_MEM_TOTAL,
 		INFO_VIDEO_MEM_USED,
 		INFO_TEXTURE_MEM_USED,
@@ -1037,6 +1058,7 @@ public:
 
 	virtual void set_boot_image(const Ref<Image> &p_image, const Color &p_color, bool p_scale, bool p_use_filter = true) = 0;
 	virtual void set_default_clear_color(const Color &p_color) = 0;
+	virtual void set_shader_time_scale(float p_scale) = 0;
 
 	enum Features {
 		FEATURE_SHADERS,
@@ -1052,6 +1074,9 @@ public:
 	virtual void call_set_use_vsync(bool p_enable) = 0;
 
 	virtual bool is_low_end() const = 0;
+
+	bool is_render_loop_enabled() const;
+	void set_render_loop_enabled(bool p_enabled);
 
 	VisualServer();
 	virtual ~VisualServer();
@@ -1084,6 +1109,7 @@ VARIANT_ENUM_CAST(VisualServer::Features);
 VARIANT_ENUM_CAST(VisualServer::MultimeshTransformFormat);
 VARIANT_ENUM_CAST(VisualServer::MultimeshColorFormat);
 VARIANT_ENUM_CAST(VisualServer::MultimeshCustomDataFormat);
+VARIANT_ENUM_CAST(VisualServer::LightBakeMode);
 VARIANT_ENUM_CAST(VisualServer::LightOmniShadowMode);
 VARIANT_ENUM_CAST(VisualServer::LightOmniShadowDetail);
 VARIANT_ENUM_CAST(VisualServer::LightDirectionalShadowMode);

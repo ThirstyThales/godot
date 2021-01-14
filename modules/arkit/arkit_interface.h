@@ -5,8 +5,8 @@
 /*                           GODOT ENGINE                                */
 /*                      https://godotengine.org                          */
 /*************************************************************************/
-/* Copyright (c) 2007-2020 Juan Linietsky, Ariel Manzur.                 */
-/* Copyright (c) 2014-2020 Godot Engine contributors (cf. AUTHORS.md).   */
+/* Copyright (c) 2007-2021 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2021 Godot Engine contributors (cf. AUTHORS.md).   */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -43,6 +43,12 @@
 
 // forward declaration for some needed objects
 class ARKitShader;
+
+#ifdef __OBJC__
+typedef NSObject GodotARAnchor;
+#else
+typedef void GodotARAnchor;
+#endif
 
 class ARKitInterface : public ARVRInterface {
 	GDCLASS(ARKitInterface, ARVRInterface);
@@ -115,8 +121,8 @@ public:
 	virtual void process();
 
 	// called by delegate (void * because C++ and Obj-C don't always mix, should really change all platform/iphone/*.cpp files to .mm)
-	void _add_or_update_anchor(void *p_anchor);
-	void _remove_anchor(void *p_anchor);
+	void _add_or_update_anchor(GodotARAnchor *p_anchor);
+	void _remove_anchor(GodotARAnchor *p_anchor);
 
 	ARKitInterface();
 	~ARKitInterface();

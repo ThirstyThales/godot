@@ -5,8 +5,8 @@
 /*                           GODOT ENGINE                                */
 /*                      https://godotengine.org                          */
 /*************************************************************************/
-/* Copyright (c) 2007-2020 Juan Linietsky, Ariel Manzur.                 */
-/* Copyright (c) 2014-2020 Godot Engine contributors (cf. AUTHORS.md).   */
+/* Copyright (c) 2007-2021 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2021 Godot Engine contributors (cf. AUTHORS.md).   */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -205,7 +205,7 @@ void AudioStreamPlayer3D::_mix_audio() {
 			AudioFrame target_volume = stream_paused_fade_out ? AudioFrame(0.f, 0.f) : current.vol[k];
 			AudioFrame vol_prev = stream_paused_fade_in ? AudioFrame(0.f, 0.f) : prev_outputs[i].vol[k];
 			AudioFrame vol_inc = (target_volume - vol_prev) / float(buffer_size);
-			AudioFrame vol = stream_paused_fade_in ? AudioFrame(0.f, 0.f) : current.vol[k];
+			AudioFrame vol = vol_prev;
 
 			if (!AudioServer::get_singleton()->thread_has_channel_mix_buffer(current.bus_index, k))
 				continue; //may have been deleted, will be updated on process
@@ -700,6 +700,11 @@ float AudioStreamPlayer3D::get_pitch_scale() const {
 }
 
 void AudioStreamPlayer3D::play(float p_from_pos) {
+
+	if (!is_playing()) {
+		// Reset the prev_output_count if the stream is stopped
+		prev_output_count = 0;
+	}
 
 	if (stream_playback.is_valid()) {
 		active = true;

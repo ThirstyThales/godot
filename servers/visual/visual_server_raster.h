@@ -5,8 +5,8 @@
 /*                           GODOT ENGINE                                */
 /*                      https://godotengine.org                          */
 /*************************************************************************/
-/* Copyright (c) 2007-2020 Juan Linietsky, Ariel Manzur.                 */
-/* Copyright (c) 2014-2020 Godot Engine contributors (cf. AUTHORS.md).   */
+/* Copyright (c) 2007-2021 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2021 Godot Engine contributors (cf. AUTHORS.md).   */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -190,6 +190,10 @@ public:
 	BIND3(shader_set_default_texture_param, RID, const StringName &, RID)
 	BIND2RC(RID, shader_get_default_texture_param, RID, const StringName &)
 
+	BIND2(shader_add_custom_define, RID, const String &)
+	BIND2C(shader_get_custom_defines, RID, Vector<String> *)
+	BIND2(shader_remove_custom_define, RID, const String &)
+
 	/* COMMON MATERIAL API */
 
 	BIND0R(RID, material_create)
@@ -310,6 +314,7 @@ public:
 	BIND2(light_set_cull_mask, RID, uint32_t)
 	BIND2(light_set_reverse_cull_face_mode, RID, bool)
 	BIND2(light_set_use_gi, RID, bool)
+	BIND2(light_set_bake_mode, RID, LightBakeMode)
 
 	BIND2(light_omni_set_shadow_mode, RID, LightOmniShadowMode)
 	BIND2(light_omni_set_shadow_detail, RID, LightOmniShadowDetail)
@@ -480,6 +485,8 @@ public:
 	BIND2(viewport_set_shadow_atlas_size, RID, int)
 	BIND3(viewport_set_shadow_atlas_quadrant_subdivision, RID, int, int)
 	BIND2(viewport_set_msaa, RID, ViewportMSAA)
+	BIND2(viewport_set_use_fxaa, RID, bool)
+	BIND2(viewport_set_use_debanding, RID, bool)
 	BIND2(viewport_set_hdr, RID, bool)
 	BIND2(viewport_set_usage, RID, ViewportUsage)
 
@@ -688,6 +695,7 @@ public:
 
 	virtual void set_boot_image(const Ref<Image> &p_image, const Color &p_color, bool p_scale, bool p_use_filter = true);
 	virtual void set_default_clear_color(const Color &p_color);
+	virtual void set_shader_time_scale(float p_scale);
 
 	virtual bool has_feature(Features p_feature) const;
 

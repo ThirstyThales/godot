@@ -5,8 +5,8 @@
 /*                           GODOT ENGINE                                */
 /*                      https://godotengine.org                          */
 /*************************************************************************/
-/* Copyright (c) 2007-2020 Juan Linietsky, Ariel Manzur.                 */
-/* Copyright (c) 2014-2020 Godot Engine contributors (cf. AUTHORS.md).   */
+/* Copyright (c) 2007-2021 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2021 Godot Engine contributors (cf. AUTHORS.md).   */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -87,7 +87,7 @@ void AudioStreamPlayer2D::_mix_audio() {
 		AudioFrame target_volume = stream_paused_fade_out ? AudioFrame(0.f, 0.f) : current.vol;
 		AudioFrame vol_prev = stream_paused_fade_in ? AudioFrame(0.f, 0.f) : prev_outputs[i].vol;
 		AudioFrame vol_inc = (target_volume - vol_prev) / float(buffer_size);
-		AudioFrame vol = stream_paused_fade_in ? AudioFrame(0.f, 0.f) : current.vol;
+		AudioFrame vol = vol_prev;
 
 		int cc = AudioServer::get_singleton()->get_channel_count();
 

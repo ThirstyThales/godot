@@ -5,8 +5,8 @@
 /*                           GODOT ENGINE                                */
 /*                      https://godotengine.org                          */
 /*************************************************************************/
-/* Copyright (c) 2007-2020 Juan Linietsky, Ariel Manzur.                 */
-/* Copyright (c) 2014-2020 Godot Engine contributors (cf. AUTHORS.md).   */
+/* Copyright (c) 2007-2021 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2021 Godot Engine contributors (cf. AUTHORS.md).   */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -69,6 +69,8 @@ public:
 		RENDER_SHADER_CHANGES_IN_FRAME,
 		RENDER_SURFACE_CHANGES_IN_FRAME,
 		RENDER_DRAW_CALLS_IN_FRAME,
+		RENDER_2D_ITEMS_IN_FRAME,
+		RENDER_2D_DRAW_CALLS_IN_FRAME,
 		RENDER_VIDEO_MEM_USED,
 		RENDER_TEXTURE_MEM_USED,
 		RENDER_VERTEX_MEM_USED,

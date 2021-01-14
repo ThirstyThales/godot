@@ -5,8 +5,8 @@
 /*                           GODOT ENGINE                                */
 /*                      https://godotengine.org                          */
 /*************************************************************************/
-/* Copyright (c) 2007-2020 Juan Linietsky, Ariel Manzur.                 */
-/* Copyright (c) 2014-2020 Godot Engine contributors (cf. AUTHORS.md).   */
+/* Copyright (c) 2007-2021 Juan Linietsky, Ariel Manzur.                 */
+/* Copyright (c) 2014-2021 Godot Engine contributors (cf. AUTHORS.md).   */
 /*                                                                       */
 /* Permission is hereby granted, free of charge, to any person obtaining */
 /* a copy of this software and associated documentation files (the       */
@@ -259,6 +259,7 @@ void StyleBoxTexture::set_region_rect(const Rect2 &p_region_rect) {
 
 	region_rect = p_region_rect;
 	emit_changed();
+	_change_notify("region");
 }
 
 Rect2 StyleBoxTexture::get_region_rect() const {
@@ -940,7 +941,7 @@ void StyleBoxFlat::_bind_methods() {
 
 	ADD_GROUP("Shadow", "shadow_");
 	ADD_PROPERTY(PropertyInfo(Variant::COLOR, "shadow_color"), "set_shadow_color", "get_shadow_color");
-	ADD_PROPERTY(PropertyInfo(Variant::INT, "shadow_size"), "set_shadow_size", "get_shadow_size");
+	ADD_PROPERTY(PropertyInfo(Variant::INT, "shadow_size", PROPERTY_HINT_RANGE, "0,100,1,or_greater"), "set_shadow_size", "get_shadow_size");
 	ADD_PROPERTY(PropertyInfo(Variant::VECTOR2, "shadow_offset"), "set_shadow_offset", "get_shadow_offset");
 
 	ADD_GROUP("Anti Aliasing", "anti_aliasing_");
