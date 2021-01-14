@@ -42,6 +42,7 @@
 #include <algorithm>
 #include <iterator>
 #include <vector>
+#include <iostream>
 
 #pragma comment(lib, "psapi.lib")
 #pragma comment(lib, "dbghelp.lib")
