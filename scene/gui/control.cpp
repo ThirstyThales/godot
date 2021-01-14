@@ -1789,6 +1789,21 @@ void Control::set_global_position(const Point2 &p_point, bool p_keep_margins) {
 
 	set_position(inv.xform(p_point), p_keep_margins);
 }
+void Control::set_corresponding_global_position(const Point2 &p_point, bool p_keep_margins) {
+
+	Transform2D inv;
+
+	if (data.parent_canvas_item) {
+
+		inv = data.parent_canvas_item->get_global_transform().affine_inverse();
+	}
+	
+	Point2 p = inv.xform(p_point);
+	Point2 n = get_position();
+	Point2 s = get_transform().get_origin();
+
+	set_position(p+n-s, p_keep_margins);
+}
 
 void Control::_compute_anchors(Rect2 p_rect, const float p_margins[4], float (&r_anchors)[4]) {
 
@@ -2840,6 +2855,7 @@ void Control::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("_set_size", "size"), &Control::_set_size);
 	ClassDB::bind_method(D_METHOD("set_custom_minimum_size", "size"), &Control::set_custom_minimum_size);
 	ClassDB::bind_method(D_METHOD("set_global_position", "position", "keep_margins"), &Control::set_global_position, DEFVAL(false));
+	ClassDB::bind_method(D_METHOD("set_corresponding_global_position", "position", "keep_margins"), &Control::set_corresponding_global_position, DEFVAL(false));
 	ClassDB::bind_method(D_METHOD("_set_global_position", "position"), &Control::_set_global_position);
 	ClassDB::bind_method(D_METHOD("set_rotation", "radians"), &Control::set_rotation);
 	ClassDB::bind_method(D_METHOD("set_rotation_degrees", "degrees"), &Control::set_rotation_degrees);

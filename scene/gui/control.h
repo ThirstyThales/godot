@@ -347,6 +347,7 @@ public:
 
 	void set_position(const Point2 &p_point, bool p_keep_margins = false);
 	void set_global_position(const Point2 &p_point, bool p_keep_margins = false);
+	void set_corresponding_global_position(const Point2 &p_point, bool p_keep_margins = false);
 	Point2 get_position() const;
 	Point2 get_global_position() const;
 
